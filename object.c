@@ -136,7 +136,27 @@ int object_write(const char *type, const void *data, size_t size, char *hash_hex
         *slash = '\0';
         mkdir(dir, 0755);
     }
+        char temp_path[600];
+    snprintf(temp_path, sizeof(temp_path), "%s.tmp", path);
+
+    int fd = open(temp_path, O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    if (fd < 0) {
+        free(buffer);
+        return -1;
+    }
+
+    write(fd, buffer, total_size);
+
+    fsync(fd);
+    close(fd);
+
+    rename(temp_path, path);
+
+    free(buffer);
+
+    return 0;
 }
+
 
 // Read an object from the store.
 //
