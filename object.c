@@ -9,13 +9,22 @@
 // TODO functions:     object_write, object_read
 
 #include "pes.h"
+#include <openssl/sha.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <openssl/evp.h>
+
+#define HASH_HEX_SIZE 65
+
+static void hash_to_hex(const unsigned char *hash, char *hex)
+{
+    for (int i = 0; i < SHA256_DIGEST_LENGTH; i++)
+    {
+        sprintf(hex + (i * 2), "%02x", hash[i]);
+    }
+    hex[64] = '\0';
+}
 
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
