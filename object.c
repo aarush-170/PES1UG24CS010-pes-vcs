@@ -125,6 +125,17 @@ int object_write(const char *type, const void *data, size_t size, char *hash_hex
         free(buffer);
         return 0;
     }
+        char path[512];
+    object_path(&id, path, sizeof(path));
+
+    char dir[512];
+    strncpy(dir, path, sizeof(dir));
+
+    char *slash = strrchr(dir, '/');
+    if (slash) {
+        *slash = '\0';
+        mkdir(dir, 0755);
+    }
 }
 
 // Read an object from the store.
