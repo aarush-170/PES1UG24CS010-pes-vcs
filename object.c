@@ -102,11 +102,22 @@ int object_exists(const ObjectID *id) {
 
 //
 // Returns 0 on success, -1 on error.
-int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out) {
-    // TODO: Implement
-    (void)type; (void)data; (void)len; (void)id_out;
-    return -1;
-}
+int object_write(const char *type, const void *data, size_t size, char *hash_hex)
+{
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+
+    char header[64];
+    int header_len = sprintf(header, "%s %zu", type, size) + 1;
+
+    size_t total_size = header_len + size;
+    char *buffer = malloc(total_size);
+
+    memcpy(buffer, header, header_len);
+    memcpy(buffer + header_len, data, size);
+
+    SHA256((unsigned char *)buffer, total_size, hash);
+
+    hash_to_hex(hash, hash_hex);
 
 // Read an object from the store.
 //
