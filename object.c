@@ -118,6 +118,14 @@ int object_write(const char *type, const void *data, size_t size, char *hash_hex
     SHA256((unsigned char *)buffer, total_size, hash);
 
     hash_to_hex(hash, hash_hex);
+        ObjectID id;
+    hex_to_hash(hash_hex, &id);
+
+    if (object_exists(&id)) {
+        free(buffer);
+        return 0;
+    }
+}
 
 // Read an object from the store.
 //
