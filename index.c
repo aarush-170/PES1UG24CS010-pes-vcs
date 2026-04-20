@@ -64,7 +64,7 @@ int index_load(Index *idx) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Comparator for qsort — sort index entries alphabetically by path  */
+/*  Comparator for qsort                                               */
 /* ------------------------------------------------------------------ */
 static int entry_cmp(const void *a, const void *b) {
     const IndexEntry *ea = (const IndexEntry *)a;
@@ -73,8 +73,7 @@ static int entry_cmp(const void *a, const void *b) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  index_save                                                          */
-/*  Writes index atomically: write to temp file, fsync, then rename.  */
+/*  index_save — atomic write with fsync                               */
 /* ------------------------------------------------------------------ */
 int index_save(const Index *idx) {
     char index_path[512];
@@ -82,13 +81,23 @@ int index_save(const Index *idx) {
     snprintf(index_path, sizeof(index_path), ".pes/index");
     snprintf(tmp_path,   sizeof(tmp_path),   ".pes/index.tmp");
 
-    /* Work on a mutable sorted copy so callers aren't surprised */
     Index sorted = *idx;
     qsort(sorted.entries, sorted.count, sizeof(IndexEntry), entry_cmp);
 
-    FILE *f = fopen(tmp_path, "w");
+    /*
+     * Open with O_WRONLY | O_CREAT | O_TRUNC so we can get the
+     * file descriptor for fsync() before closing.
+     */
+    int fd = open(tmp_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd < 0) {
+        perror("index_save: open tmp");
+        return -1;
+    }
+
+    FILE *f = fdopen(fd, "w");
     if (!f) {
-        perror("index_save: fopen tmp");
+        perror("index_save: fdopen");
+        close(fd);
         return -1;
     }
 
@@ -103,9 +112,20 @@ int index_save(const Index *idx) {
     }
 
     fflush(f);
-    fclose(f);
 
-    /* Atomic replace */
+    /*
+     * fsync ensures bytes are on disk before we rename.
+     * Without this, a crash between rename and disk flush could
+     * leave us with an empty index.
+     */
+    if (fsync(fd) != 0) {
+        perror("index_save: fsync");
+        fclose(f);
+        return -1;
+    }
+
+    fclose(f);   /* also closes fd */
+
     if (rename(tmp_path, index_path) != 0) {
         perror("index_save: rename");
         return -1;
