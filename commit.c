@@ -199,10 +199,12 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     Commit commit;
     memset(&commit, 0, sizeof(Commit));
 
+    // create tree snapshot from index
     if (tree_from_index(&commit.tree) != 0) {
         return -1;
     }
 
+    // parent commit
     ObjectID parent_id;
 
     if (head_read(&parent_id) == 0) {
@@ -212,13 +214,14 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
         commit.has_parent = 0;
     }
 
+    // metadata
     snprintf(commit.author, sizeof(commit.author), "%s", pes_author());
 
     commit.timestamp = (uint64_t)time(NULL);
 
     snprintf(commit.message, sizeof(commit.message), "%s", message);
 
-    // convert commit struct to text format
+    // serialize commit object
     void *data;
     size_t len;
 
@@ -233,6 +236,11 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     }
 
     free(data);
+
+    // move branch pointer to new commit
+    if (head_update(commit_id_out) != 0) {
+        return -1;
+    }
 
     return 0;
 }
