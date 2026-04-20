@@ -199,12 +199,10 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
     Commit commit;
     memset(&commit, 0, sizeof(Commit));
 
-    // tree snapshot
     if (tree_from_index(&commit.tree) != 0) {
         return -1;
     }
 
-    // parent commit
     ObjectID parent_id;
 
     if (head_read(&parent_id) == 0) {
@@ -214,14 +212,27 @@ int commit_create(const char *message, ObjectID *commit_id_out) {
         commit.has_parent = 0;
     }
 
-    // author name
     snprintf(commit.author, sizeof(commit.author), "%s", pes_author());
 
-    // timestamp
     commit.timestamp = (uint64_t)time(NULL);
 
-    // commit message
     snprintf(commit.message, sizeof(commit.message), "%s", message);
+
+    // convert commit struct to text format
+    void *data;
+    size_t len;
+
+    if (commit_serialize(&commit, &data, &len) != 0) {
+        return -1;
+    }
+
+    // store commit object
+    if (object_write(OBJ_COMMIT, data, len, commit_id_out) != 0) {
+        free(data);
+        return -1;
+    }
+
+    free(data);
 
     return 0;
 }
